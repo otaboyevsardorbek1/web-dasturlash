@@ -1,0 +1,7 @@
+Flask
+Flask-SocketIO
+python-socketio
+eventlet==0.33.3
+
+git config --global user.name "otaboyevsardorbek1"
+git config --global user.email "javahrotaboyev@gmail.com "

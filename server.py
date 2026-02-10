@@ -24,7 +24,7 @@ def handle_connect():
     user_count += 1
     
     # Yangi foydalanuvchi nomini yaratish
-    user_id = f"Foydalanuvchi_{user_count}"
+    user_id = f"user_{user_count}"
     users[user_id] = {'id': user_id, 'connected': True}
     
     # Foydalanuvchiga o'zining ID'sini yuborish
@@ -101,4 +101,4 @@ if __name__ == '__main__':
     URL: http://localhost:5000
     ========================================
     """)
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)

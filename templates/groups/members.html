@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - {{ group.name }} a'zolari</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        .bg-bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            border-radius: 50%;
+        }
+
+        @keyframes square {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-1200px) rotate(600deg); opacity: 0; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .group-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #4f46e5;
+            overflow: hidden;
+        }
+
+        .group-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .group-info h1 {
+            margin-bottom: 5px;
+        }
+
+        .group-info p {
+            opacity: 0.9;
+        }
+
+        .body {
+            padding: 30px;
+        }
+
+        .member-search {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .members-list {
+            list-style: none;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            background: #f9fafb;
+            transition: all 0.3s;
+        }
+
+        .member-item:hover {
+            background: #f3f4f6;
+        }
+
+        .member-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            overflow: hidden;
+        }
+
+        .member-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .member-details {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .member-email {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .member-status {
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 3px;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
+        }
+
+        .offline-dot {
+            background: #9ca3af;
+        }
+
+        .member-role {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .role-owner {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .role-admin {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .role-member {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+        .member-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            color: #4f46e5;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .btn-icon:hover {
+            background: #4f46e5;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-danger {
+            color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .role-select {
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .role-select:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f3f4f6;
+            color: #374151;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #e5e7eb;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .stats-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .member-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .member-avatar {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+            
+            .member-actions {
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="container">
+        <a href="{{ url_for('groups.view_group', group_id=group.id) }}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Guruhga qaytish
+        </a>
+
+        <div class="card">
+            <div class="header">
+                <div class="group-avatar">
+                    {% if group.avatar %}
+                        <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                    {% else %}
+                        <i class="fas fa-users"></i>
+                    {% endif %}
+                </div>
+                <div class="group-info">
+                    <h1>{{ group.name }}</h1>
+                    <p>{{ group.get_member_count() }} a'zo • A'zolarni boshqarish</p>
+                </div>
+            </div>
+
+            <div class="body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-check-circle"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Stats -->
+                <div class="stats-summary">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ members|selectattr('role', 'equalto', 'owner')|list|length }}</div>
+                        <div class="stat-label">Owner</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ members|selectattr('role', 'equalto', 'admin')|list|length }}</div>
+                        <div class="stat-label">Admin</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ members|selectattr('role', 'equalto', 'member')|list|length }}</div>
+                        <div class="stat-label">Member</div>
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div class="member-search">
+                    <input type="text" 
+                           id="searchInput" 
+                           class="search-input" 
+                           placeholder="A'zolarni qidirish..." 
+                           onkeyup="searchMembers()">
+                    <button class="btn-icon" style="width: 45px; height: 45px;" onclick="window.location.href='{{ url_for('groups.invite_to_group', group_id=group.id) }}'">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                </div>
+
+                <!-- Members list -->
+                <ul class="members-list" id="membersList">
+                    {% for member in members %}
+                        <li class="member-item" data-username="{{ member.user.username }}" data-email="{{ member.user.email }}">
+                            <div class="member-avatar">
+                                <img src="{{ url_for('uploaded_file', filename=member.user.avatar) if member.user.avatar else 'https://ui-avatars.com/api/?name=' + member.user.username + '&background=4f46e5&color=fff' }}" alt="{{ member.user.username }}">
+                            </div>
+                            <div class="member-details">
+                                <div class="member-name">
+                                    {{ member.user.username }}
+                                    <span class="member-role 
+                                        {% if member.role == 'owner' %}role-owner
+                                        {% elif member.role == 'admin' %}role-admin
+                                        {% else %}role-member
+                                        {% endif %}">
+                                        {{ member.role }}
+                                    </span>
+                                </div>
+                                <div class="member-email">{{ member.user.email }}</div>
+                                <div class="member-status">
+                                    <span class="online-dot {% if not member.user.is_online %}offline-dot{% endif %}"></span>
+                                    {{ 'Online' if member.user.is_online else 'Offline' }}
+                                    • Qo'shilgan: {{ member.joined_at.strftime('%d.%m.%Y') }}
+                                </div>
+                            </div>
+                            <div class="member-actions">
+                                {% if member.role != 'owner' and group.owner_id == current_user.id %}
+                                    <select class="role-select" onchange="changeRole({{ member.user.id }}, this.value)">
+                                        <option value="admin" {% if member.role == 'admin' %}selected{% endif %}>Admin</option>
+                                        <option value="member" {% if member.role == 'member' %}selected{% endif %}>Member</option>
+                                    </select>
+                                    <button class="btn-icon btn-danger" onclick="removeMember({{ member.user.id }})" title="Chiqarish">
+                                        <i class="fas fa-user-minus"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Search members
+        function searchMembers() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const members = document.querySelectorAll('.member-item');
+            
+            members.forEach(member => {
+                const username = member.dataset.username.toLowerCase();
+                const email = member.dataset.email.toLowerCase();
+                
+                if (username.includes(filter) || email.includes(filter)) {
+                    member.style.display = 'flex';
+                } else {
+                    member.style.display = 'none';
+                }
+            });
+        }
+
+        // Change member role
+        function changeRole(userId, role) {
+            fetch(`/groups/{{ group.id }}/members/${userId}/role`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ role: role })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Xatolik: ' + data.error);
+                }
+            });
+        }
+
+        // Remove member
+        function removeMember(userId) {
+            if (confirm('Bu a\'zoni guruhdan chiqarib yubormoqchimisiz?')) {
+                fetch(`/groups/{{ group.id }}/members/${userId}/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Xatolik: ' + data.error);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

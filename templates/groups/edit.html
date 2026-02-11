@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - Guruhni tahrirlash</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS kodlari (create.html bilan bir xil) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .bg-bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            border-radius: 50%;
+        }
+
+        @keyframes square {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-1200px) rotate(600deg); opacity: 0; }
+        }
+
+        .edit-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+            position: relative;
+            z-index: 10;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .avatar-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 20px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #9ca3af;
+            margin-bottom: 15px;
+            cursor: pointer;
+            overflow: hidden;
+            border: 3px solid #4f46e5;
+            transition: all 0.3s;
+        }
+
+        .avatar-preview:hover {
+            opacity: 0.8;
+        }
+
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #4f46e5;
+            border: 2px solid #4f46e5;
+            margin-top: 10px;
+        }
+
+        .btn-outline:hover {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .delete-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #fee2e2;
+        }
+
+        .delete-title {
+            color: #dc2626;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .edit-container {
+                max-width: 100%;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="edit-container">
+        <div class="header">
+            <i class="fas fa-edit"></i>
+            <h1>Guruhni tahrirlash</h1>
+            <p>{{ group.name }}</p>
+        </div>
+        
+        <div class="body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas 
+                                {% if category == 'success' %}
+                                    fa-check-circle
+                                {% else %}
+                                    fa-exclamation-circle
+                                {% endif %}
+                            "></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" enctype="multipart/form-data" onsubmit="showLoading()">
+                {{ form.hidden_tag() }}
+                
+                <!-- Avatar upload -->
+                <div class="avatar-upload">
+                    <div class="avatar-preview" id="avatarPreview" onclick="document.getElementById('avatar').click()">
+                        {% if group.avatar %}
+                            <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                        {% else %}
+                            <i class="fas fa-camera"></i>
+                        {% endif %}
+                    </div>
+                    <input type="file" id="avatar" name="avatar" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+                    <div style="font-size: 0.9rem; color: #6b7280;">
+                        <i class="fas fa-info-circle"></i> Yangi rasm yuklash uchun bosing
+                    </div>
+                    <div id="fileName" style="margin-top: 10px; font-size: 0.85rem; color: #4f46e5;"></div>
+                </div>
+                
+                <!-- Group name -->
+                <div class="form-group">
+                    <label for="name">
+                        <i class="fas fa-tag"></i> Guruh nomi *
+                    </label>
+                    {{ form.name(class="form-control", id="name") }}
+                    {% if form.name.errors %}
+                        {% for error in form.name.errors %}
+                            <div style="color: #dc2626; font-size: 0.8rem; margin-top: 5px;">
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <!-- Description -->
+                <div class="form-group">
+                    <label for="description">
+                        <i class="fas fa-align-left"></i> Guruh tavsifi
+                    </label>
+                    {{ form.description(class="form-control", id="description", rows="4") }}
+                </div>
+                
+                <div class="action-buttons">
+                    {{ form.submit(class="btn btn-primary", value="O'zgarishlarni saqlash") }}
+                    <a href="{{ url_for('groups.view_group', group_id=group.id) }}" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i> Orqaga
+                    </a>
+                </div>
+            </form>
+            
+            <!-- Delete group section (only for owner) -->
+            {% if group.owner_id == current_user.id %}
+                <div class="delete-section">
+                    <div class="delete-title">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Xavfli zona
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 15px; font-size: 0.95rem;">
+                        Guruhni o'chirish barcha xabarlar va a'zolarni butunlay yo'q qiladi. 
+                        Bu amalni qaytarib bo'lmaydi!
+                    </p>
+                    <form action="{{ url_for('groups.delete_group', group_id=group.id) }}" method="POST" 
+                          onsubmit="return confirm('Haqiqatan ham guruhni o\'chirmoqchimisiz? Bu amalni qaytarib bo\'lmaydi!'); showLoading()">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Guruhni o'chirish
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        function previewAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                const preview = document.getElementById('avatarPreview');
+                
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    document.getElementById('fileName').innerHTML = 
+                        '<i class="fas fa-check-circle"></i> Yangi rasm: ' + input.files[0].name;
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - Profil</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS kodlari */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .profile-header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 5px solid white;
+            margin: 0 auto 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .profile-email {
+            font-size: 1rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .profile-body {
+            padding: 30px;
+        }
+
+        .profile-info {
+            background: #f9fafb;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: #e0e7ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4f46e5;
+            margin-right: 15px;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #4f46e5;
+            border: 2px solid #4f46e5;
+        }
+
+        .btn-outline:hover {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                max-width: 100%;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {% if user.avatar %}
+                    <img src="{{ url_for('uploaded_file', filename=user.avatar) }}" alt="Avatar">
+                {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ user.username }}&size=120&background=4f46e5&color=fff" alt="Avatar">
+                {% endif %}
+            </div>
+            <div class="profile-name">{{ user.username }}</div>
+            <div class="profile-email">
+                <i class="fas fa-envelope"></i>
+                {{ user.email }}
+            </div>
+        </div>
+        
+        <div class="profile-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas fa-check-circle"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ user.owned_groups|length }}</div>
+                    <div class="stat-label">Guruhlarim</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ user.messages|length }}</div>
+                    <div class="stat-label">Xabarlar</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ user.last_seen.strftime('%d.%m.%Y') }}</div>
+                    <div class="stat-label">Oxirgi ko'rilgan</div>
+                </div>
+            </div>
+            
+            <div class="profile-info">
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Ro'yxatdan o'tgan sana</div>
+                        <div class="info-value">{{ user.created_at.strftime('%d %B %Y, %H:%M') }}</div>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Oxirgi faollik</div>
+                        <div class="info-value">{{ user.last_seen.strftime('%d %B %Y, %H:%M') }}</div>
+                    </div>
+                </div>
+                
+                {% if user.bio %}
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Bio</div>
+                        <div class="info-value">{{ user.bio }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="action-buttons">
+                <a href="{{ url_for('auth.edit_profile') }}" class="btn">
+                    <i class="fas fa-edit"></i> Profilni tahrirlash
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">
+                    <i class="fas fa-sign-out-alt"></i> Chiqish
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">
+                    <i class="fas fa-comments"></i> Chatga qaytish
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

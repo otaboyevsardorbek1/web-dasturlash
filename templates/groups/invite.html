@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - A'zo taklif qilish</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .bg-bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            border-radius: 50%;
+        }
+
+        @keyframes square {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-1200px) rotate(600deg); opacity: 0; }
+        }
+
+        .invite-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+            position: relative;
+            z-index: 10;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .body {
+            padding: 30px;
+        }
+
+        .group-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .group-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 15px;
+            background: #e0e7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #4f46e5;
+            overflow: hidden;
+        }
+
+        .group-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .group-details h3 {
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .group-details p {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .invite-methods {
+            display: grid;
+            gap: 20px;
+        }
+
+        .invite-method {
+            border: 2px solid #e5e7eb;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .invite-method:hover {
+            border-color: #4f46e5;
+            box-shadow: 0 5px 20px rgba(79, 70, 229, 0.1);
+        }
+
+        .method-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .method-title i {
+            font-size: 1.2rem;
+            color: #4f46e5;
+        }
+
+        .invite-link-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .invite-link-box input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: #f9fafb;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #4f46e5;
+            border: 2px solid #4f46e5;
+        }
+
+        .btn-outline:hover {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #4f46e5;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon:hover {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+
+        .username-search {
+            display: flex;
+            gap: 10px;
+        }
+
+        .username-search input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+        }
+
+        .username-search input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .search-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .search-result.show {
+            display: block;
+        }
+
+        .user-found {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 3px;
+        }
+
+        .user-email {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            text-decoration: none;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            color: #4f46e5;
+        }
+
+        @media (max-width: 768px) {
+            .invite-container {
+                max-width: 100%;
+            }
+            
+            .group-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .invite-link-box {
+                flex-direction: column;
+            }
+            
+            .username-search {
+                flex-direction: column;
+            }
+            
+            .btn-icon {
+                width: 100%;
+                border-radius: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="invite-container">
+        <div class="header">
+            <i class="fas fa-user-plus"></i>
+            <h1>A'zo taklif qilish</h1>
+            <p>{{ group.name }} guruhiga a'zo qo'shing</p>
+        </div>
+        
+        <div class="body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas 
+                                {% if category == 'success' %}
+                                    fa-check-circle
+                                {% elif category == 'danger' %}
+                                    fa-exclamation-circle
+                                {% else %}
+                                    fa-info-circle
+                                {% endif %}
+                            "></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Group info -->
+            <div class="group-info">
+                <div class="group-avatar">
+                    {% if group.avatar %}
+                        <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                    {% else %}
+                        <i class="fas fa-users"></i>
+                    {% endif %}
+                </div>
+                <div class="group-details">
+                    <h3>{{ group.name }}</h3>
+                    <p>{{ group.get_member_count() }} a'zo • 
+                       {% if group.is_private %}
+                           <i class="fas fa-lock"></i> Shaxsiy
+                       {% else %}
+                           <i class="fas fa-globe"></i> Ochiq
+                       {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="invite-methods">
+                <!-- Method 1: Invite link -->
+                <div class="invite-method">
+                    <div class="method-title">
+                        <i class="fas fa-link"></i>
+                        <span>1. Taklif havolasi orqali</span>
+                    </div>
+                    <div class="invite-link-box">
+                        <input type="text" id="inviteLink" value="{{ url_for('groups.join_group', invite_code=group.invite_code, _external=True) }}" readonly>
+                        <button class="btn-icon" onclick="copyInviteLink()" title="Nusxalash">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn-icon" onclick="regenerateInvite()" title="Yangi kod yaratish">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #6b7280;">
+                        <i class="fas fa-info-circle"></i> Bu havolani istalgan foydalanuvchiga yuboring. Havola orqali har kim guruhga qo'shilishi mumkin.
+                    </div>
+                </div>
+
+                <!-- Method 2: Username search -->
+                <div class="invite-method">
+                    <div class="method-title">
+                        <i class="fas fa-search"></i>
+                        <span>2. Foydalanuvchi nomi orqali</span>
+                    </div>
+                    <div class="username-search">
+                        <input type="text" 
+                               id="usernameSearch" 
+                               placeholder="Foydalanuvchi nomini kiriting..."
+                               onkeyup="searchUser(this.value)">
+                        <button class="btn-primary" onclick="sendInvite()">
+                            <i class="fas fa-paper-plane"></i> Taklif yuborish
+                        </button>
+                    </div>
+                    
+                    <!-- Search result -->
+                    <div class="search-result" id="searchResult">
+                        <div class="user-found" id="foundUser">
+                            <!-- User data will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                <a href="{{ url_for('groups.view_group', group_id=group.id) }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i> Guruhga qaytish
+                </a>
+                
+                <button class="btn-outline" onclick="window.location.href='{{ url_for('groups.regenerate_invite', group_id=group.id) }}'">
+                    <i class="fas fa-redo-alt"></i> Yangi kod yaratish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Copy invite link
+        function copyInviteLink() {
+            const input = document.getElementById('inviteLink');
+            input.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.style.background = '';
+                btn.style.color = '';
+            }, 2000);
+        }
+
+        // Regenerate invite code
+        function regenerateInvite() {
+            if (confirm('Yangi taklif kodi yaratilsinmi? Eski kod o\'z kuchini yo\'qotadi.')) {
+                fetch(`/groups/{{ group.id }}/regenerate-invite`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('inviteLink').value = data.invite_url;
+                        
+                        // Show success message
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success';
+                        alert.innerHTML = '<i class="fas fa-check-circle"></i> Yangi taklif kodi yaratildi!';
+                        document.querySelector('.body').insertBefore(alert, document.querySelector('.invite-methods'));
+                        
+                        setTimeout(() => alert.remove(), 3000);
+                    }
+                });
+            }
+        }
+
+        // Search user
+        let searchTimeout;
+        function searchUser(query) {
+            clearTimeout(searchTimeout);
+            
+            if (query.length < 3) {
+                document.getElementById('searchResult').classList.remove('show');
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                // Bu yerda API orqali foydalanuvchini qidirish kerak
+                // Hozircha mock qilamiz
+                const resultDiv = document.getElementById('searchResult');
+                const foundUserDiv = document.getElementById('foundUser');
+                
+                // Mock data
+                foundUserDiv.innerHTML = `
+                    <div class="user-avatar">
+                        <img src="https://ui-avatars.com/api/?name=${query}&background=4f46e5&color=fff">
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">${query}</div>
+                        <div class="user-email">${query}@example.com</div>
+                    </div>
+                    <button class="btn-primary" onclick="sendInviteToUser('${query}')" style="padding: 8px 16px;">
+                        <i class="fas fa-user-plus"></i> Qo'shish
+                    </button>
+                `;
+                
+                resultDiv.classList.add('show');
+            }, 500);
+        }
+
+        // Send invite to searched user
+        function sendInviteToUser(username) {
+            fetch('/api/invite-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    group_id: {{ group.id }},
+                    username: username
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Taklif yuborildi!');
+                    document.getElementById('searchResult').classList.remove('show');
+                    document.getElementById('usernameSearch').value = '';
+                } else {
+                    alert('Xatolik: ' + data.error);
+                }
+            });
+        }
+
+        // Send invite (default)
+        function sendInvite() {
+            const username = document.getElementById('usernameSearch').value;
+            if (username) {
+                sendInviteToUser(username);
+            }
+        }
+
+        // Share via other platforms
+        function shareViaWhatsApp() {
+            const link = document.getElementById('inviteLink').value;
+            const text = encodeURIComponent(`"{{ group.name }}" guruhiga taklif qilaman! Guruhga qo'shilish uchun havola: ${link}`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function shareViaTelegram() {
+            const link = document.getElementById('inviteLink').value;
+            const text = encodeURIComponent(`"{{ group.name }}" guruhiga taklif qilaman! Guruhga qo'shilish uchun havola: ${link}`);
+            window.open(`https://t.me/share/url?url=${link}&text=${text}`, '_blank');
+        }
+
+        function shareViaEmail() {
+            const link = document.getElementById('inviteLink').value;
+            const subject = encodeURIComponent(`{{ group.name }} guruhiga taklif`);
+            const body = encodeURIComponent(`Assalomu alaykum! Sizni "{{ group.name }}" guruhiga taklif qilaman. Guruhga qo'shilish uchun quyidagi havoladan foydalaning:\n\n${link}`);
+            window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+        }
+
+        // QR Code (optional)
+        function generateQRCode() {
+            // Bu yerda QR kod generatsiya qilish mumkin
+            alert('QR kod generatsiya qilish funksiyasi keyingi versiyada qo\'shiladi');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - Ro'yxatdan o'tish</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-bubbles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            transition-timing-function: linear;
+            border-radius: 50%;
+        }
+
+        .bg-bubbles li:nth-child(1) {
+            left: 10%;
+            width: 80px;
+            height: 80px;
+            animation-delay: 0s;
+            animation-duration: 12s;
+        }
+
+        .bg-bubbles li:nth-child(2) {
+            left: 20%;
+            width: 20px;
+            height: 20px;
+            animation-delay: 2s;
+            animation-duration: 20s;
+        }
+
+        .bg-bubbles li:nth-child(3) {
+            left: 25%;
+            width: 60px;
+            height: 60px;
+            animation-delay: 4s;
+            animation-duration: 18s;
+        }
+
+        .bg-bubbles li:nth-child(4) {
+            left: 40%;
+            width: 100px;
+            height: 100px;
+            animation-delay: 0s;
+            animation-duration: 15s;
+        }
+
+        .bg-bubbles li:nth-child(5) {
+            left: 70%;
+            width: 50px;
+            height: 50px;
+            animation-delay: 0s;
+            animation-duration: 25s;
+        }
+
+        .bg-bubbles li:nth-child(6) {
+            left: 80%;
+            width: 70px;
+            height: 70px;
+            animation-delay: 3s;
+            animation-duration: 22s;
+        }
+
+        @keyframes square {
+            0% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(-1200px) rotate(600deg);
+                opacity: 0;
+            }
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .auth-header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .auth-header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .auth-header p {
+            opacity: 0.95;
+            font-size: 1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .auth-header i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .auth-body {
+            padding: 35px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4b5563;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .input-icon {
+            position: relative;
+        }
+
+        .input-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: all 0.3s;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            background: #f9fafb;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4f46e5;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-control:focus + i {
+            color: #4f46e5;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn i {
+            transition: transform 0.3s;
+        }
+
+        .btn:hover i {
+            transform: translateX(5px);
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateX(-20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        .auth-links {
+            margin-top: 25px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .auth-links a {
+            color: #4f46e5;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            padding: 5px 0;
+        }
+
+        .auth-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #4f46e5;
+            transition: width 0.3s;
+        }
+
+        .auth-links a:hover {
+            color: #7c3aed;
+        }
+
+        .auth-links a:hover::after {
+            width: 100%;
+        }
+
+        .auth-links span {
+            color: #9ca3af;
+            margin: 0 5px;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            height: 5px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0;
+            transition: all 0.3s;
+            border-radius: 3px;
+        }
+
+        .password-strength-text {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            color: #6b7280;
+        }
+
+        .terms-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+
+        .terms-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #4f46e5;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .form-footer {
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-container {
+                max-width: 100%;
+                margin: 15px;
+            }
+            
+            .auth-header {
+                padding: 25px 20px;
+            }
+            
+            .auth-body {
+                padding: 25px 20px;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Password requirements */
+        .password-requirements {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            color: #6b7280;
+        }
+
+        .requirement i {
+            font-size: 0.75rem;
+        }
+
+        .requirement.valid {
+            color: #10b981;
+        }
+
+        .requirement.invalid {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background -->
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <!-- Loading overlay -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-header">
+            <i class="fas fa-user-plus"></i>
+            <h1>WebSocket Chat</h1>
+            <p>Yangi akkaunt yaratish</p>
+        </div>
+        
+        <div class="auth-body">
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas 
+                                {% if category == 'success' %}
+                                    fa-check-circle
+                                {% elif category == 'danger' %}
+                                    fa-exclamation-circle
+                                {% else %}
+                                    fa-info-circle
+                                {% endif %}
+                            "></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" id="registerForm">
+                {{ form.hidden_tag() }}
+                
+                <!-- Username field -->
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Foydalanuvchi nomi
+                    </label>
+                    <div class="input-icon">
+                        {{ form.username(
+                            class="form-control", 
+                            placeholder="Masalan: johndoe",
+                            id="username",
+                            autocomplete="off"
+                        ) }}
+                        <i class="fas fa-user"></i>
+                    </div>
+                    {% if form.username.errors %}
+                        {% for error in form.username.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    <small style="color: #6b7280; margin-top: 5px; display: block;">
+                        <i class="fas fa-info-circle"></i> Kamida 3 ta belgi
+                    </small>
+                </div>
+                
+                <!-- Email field -->
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i> Email manzil
+                    </label>
+                    <div class="input-icon">
+                        {{ form.email(
+                            class="form-control", 
+                            placeholder="example@gmail.com",
+                            id="email"
+                        ) }}
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    {% if form.email.errors %}
+                        {% for error in form.email.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <!-- Password field -->
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Parol
+                    </label>
+                    <div class="input-icon">
+                        {{ form.password(
+                            class="form-control", 
+                            placeholder="••••••••",
+                            id="password"
+                        ) }}
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    
+                    <!-- Password strength indicator -->
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="password-strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="password-strength-text" id="strengthText">
+                        Parol kuchini kiriting
+                    </div>
+                    
+                    <!-- Password requirements -->
+                    <div class="password-requirements" id="passwordRequirements">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #374151;">
+                            <i class="fas fa-shield-alt"></i> Parol talablari:
+                        </div>
+                        <div class="requirement" id="reqLength">
+                            <i class="fas fa-circle"></i> Kamida 6 ta belgi
+                        </div>
+                        <div class="requirement" id="reqNumber">
+                            <i class="fas fa-circle"></i> Kamida 1 ta raqam
+                        </div>
+                        <div class="requirement" id="reqLower">
+                            <i class="fas fa-circle"></i> Kamida 1 ta kichik harf
+                        </div>
+                        <div class="requirement" id="reqUpper">
+                            <i class="fas fa-circle"></i> Kamida 1 ta katta harf
+                        </div>
+                        <div class="requirement" id="reqSpecial">
+                            <i class="fas fa-circle"></i> Kamida 1 ta maxsus belgi (!@#$%^&*)
+                        </div>
+                    </div>
+                    
+                    {% if form.password.errors %}
+                        {% for error in form.password.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <!-- Confirm password field -->
+                <div class="form-group">
+                    <label for="confirm_password">
+                        <i class="fas fa-lock"></i> Parolni tasdiqlang
+                    </label>
+                    <div class="input-icon">
+                        {{ form.confirm_password(
+                            class="form-control", 
+                            placeholder="••••••••",
+                            id="confirm_password"
+                        ) }}
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div id="passwordMatch" style="font-size: 0.8rem; margin-top: 5px;"></div>
+                    {% if form.confirm_password.errors %}
+                        {% for error in form.confirm_password.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <!-- Terms and conditions -->
+                <div class="terms-checkbox">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">
+                        <a href="#" style="color: #4f46e5; text-decoration: none;">Foydalanish shartlari</a> va 
+                        <a href="#" style="color: #4f46e5; text-decoration: none;">Maxfiylik siyosati</a> bilan tanishdim
+                    </label>
+                </div>
+                
+                <!-- Submit button -->
+                <div class="form-group">
+                    {{ form.submit(class="btn", value="Ro'yxatdan o'tish", onclick="showLoading()") }}
+                </div>
+            </form>
+            
+            <div class="auth-links">
+                <span>Akkauntingiz bormi?</span>
+                <a href="{{ url_for('auth.login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Tizimga kirish
+                </a>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="{{ url_for('index') }}" style="color: #6b7280; text-decoration: none; font-size: 0.9rem;">
+                    <i class="fas fa-arrow-left"></i> Bosh sahifaga qaytish
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show loading spinner
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        // Password strength checker
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            const strengthBar = document.getElementById('strengthBar');
+            const strengthText = document.getElementById('strengthText');
+            
+            // Check requirements
+            const hasLength = password.length >= 6;
+            const hasNumber = /\d/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            // Update requirement icons
+            updateRequirement('reqLength', hasLength);
+            updateRequirement('reqNumber', hasNumber);
+            updateRequirement('reqLower', hasLower);
+            updateRequirement('reqUpper', hasUpper);
+            updateRequirement('reqSpecial', hasSpecial);
+            
+            // Calculate strength
+            const checks = [hasLength, hasNumber, hasLower, hasUpper, hasSpecial];
+            const strength = checks.filter(Boolean).length;
+            
+            // Update bar
+            const percentage = (strength / 5) * 100;
+            strengthBar.style.width = percentage + '%';
+            
+            // Update colors and text
+            if (strength <= 2) {
+                strengthBar.style.background = '#ef4444';
+                strengthText.textContent = 'Zaif parol';
+                strengthText.style.color = '#ef4444';
+            } else if (strength <= 3) {
+                strengthBar.style.background = '#f59e0b';
+                strengthText.textContent = 'O\'rtacha parol';
+                strengthText.style.color = '#f59e0b';
+            } else if (strength <= 4) {
+                strengthBar.style.background = '#3b82f6';
+                strengthText.textContent = 'Yaxshi parol';
+                strengthText.style.color = '#3b82f6';
+            } else {
+                strengthBar.style.background = '#10b981';
+                strengthText.textContent = 'Kuchli parol';
+                strengthText.style.color = '#10b981';
+            }
+        });
+
+        // Update requirement icon
+        function updateRequirement(elementId, isValid) {
+            const element = document.getElementById(elementId);
+            const icon = element.querySelector('i');
+            
+            if (isValid) {
+                element.classList.add('valid');
+                element.classList.remove('invalid');
+                icon.className = 'fas fa-check-circle';
+            } else {
+                element.classList.add('invalid');
+                element.classList.remove('valid');
+                icon.className = 'fas fa-circle';
+            }
+        }
+
+        // Password match checker
+        document.getElementById('confirm_password').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            const matchDiv = document.getElementById('passwordMatch');
+            
+            if (confirmPassword.length > 0) {
+                if (password === confirmPassword) {
+                    matchDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Parollar mos keldi';
+                    matchDiv.style.color = '#10b981';
+                } else {
+                    matchDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #dc2626;"></i> Parollar mos kelmadi';
+                    matchDiv.style.color = '#dc2626';
+                }
+            } else {
+                matchDiv.innerHTML = '';
+            }
+        });
+
+        // Username availability check (optional)
+        let usernameTimeout;
+        document.getElementById('username').addEventListener('input', function() {
+            clearTimeout(usernameTimeout);
+            const username = this.value;
+            
+            if (username.length >= 3) {
+                usernameTimeout = setTimeout(function() {
+                    // You can implement AJAX check here
+                    console.log('Checking username:', username);
+                }, 500);
+            }
+        });
+
+        // Form validation
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            const terms = document.getElementById('terms');
+            if (!terms.checked) {
+                e.preventDefault();
+                alert('Iltimos, foydalanish shartlari va maxfiylik siyosatini qabul qiling!');
+                return;
+            }
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Parollar mos kelmadi!');
+                return;
+            }
+            
+            showLoading();
+        });
+
+        // Toggle password visibility (optional enhancement)
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        }
+
+        // Add eye icons to password fields (you need to modify HTML to include these)
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can add eye icons programmatically if needed
+            console.log('Register page loaded');
+        });
+
+        // Prevent form resubmission on page refresh
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
+    </script>
+</body>
+</html>

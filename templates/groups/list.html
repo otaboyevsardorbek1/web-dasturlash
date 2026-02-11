@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - Guruhlar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Animated background */
+        .bg-bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            transition-timing-function: linear;
+            border-radius: 50%;
+        }
+
+        .bg-bubbles li:nth-child(1) { left: 10%; width: 80px; height: 80px; animation-delay: 0s; animation-duration: 12s; }
+        .bg-bubbles li:nth-child(2) { left: 20%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 20s; }
+        .bg-bubbles li:nth-child(3) { left: 25%; width: 60px; height: 60px; animation-delay: 4s; animation-duration: 18s; }
+        .bg-bubbles li:nth-child(4) { left: 40%; width: 100px; height: 100px; animation-delay: 0s; animation-duration: 15s; }
+        .bg-bubbles li:nth-child(5) { left: 70%; width: 50px; height: 50px; animation-delay: 0s; animation-duration: 25s; }
+        .bg-bubbles li:nth-child(6) { left: 80%; width: 70px; height: 70px; animation-delay: 3s; animation-duration: 22s; }
+
+        @keyframes square {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-1200px) rotate(600deg); opacity: 0; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            color: #4f46e5;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f3f4f6;
+            border-radius: 30px;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #4f46e5;
+            border: 2px solid #4f46e5;
+        }
+
+        .btn-outline:hover {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #6b7280;
+        }
+
+        .tab.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .tab i {
+            margin-right: 8px;
+        }
+
+        /* Groups grid */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .group-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+            animation: fadeIn 0.6s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .group-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(79, 70, 229, 0.15);
+        }
+
+        .group-card.owner {
+            border: 2px solid #4f46e5;
+        }
+
+        .group-header {
+            height: 100px;
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            position: relative;
+        }
+
+        .group-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: white;
+            position: absolute;
+            bottom: -30px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #4f46e5;
+            border: 4px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .group-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .group-body {
+            padding: 50px 20px 20px;
+        }
+
+        .group-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .group-badge.owner {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .group-description {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .group-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #6b7280;
+            font-size: 0.85rem;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .group-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .group-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #6b7280;
+            margin-bottom: 25px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .user-menu {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .groups-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <i class="fas fa-users"></i>
+                Guruhlarim
+            </h1>
+            <div class="user-menu">
+                <div class="user-info">
+                    <img src="{{ url_for('uploaded_file', filename=current_user.avatar) if current_user.avatar else 'https://ui-avatars.com/api/?name=' + current_user.username + '&background=4f46e5&color=fff' }}" 
+                         alt="Avatar" 
+                         class="user-avatar">
+                    <span>{{ current_user.username }}</span>
+                </div>
+                <a href="{{ url_for('groups.create_group') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Yangi guruh
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">
+                    <i class="fas fa-comments"></i> Chat
+                </a>
+            </div>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas 
+                            {% if category == 'success' %}
+                                fa-check-circle
+                            {% elif category == 'danger' %}
+                                fa-exclamation-circle
+                            {% else %}
+                                fa-info-circle
+                            {% endif %}
+                        "></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="filterGroups('my')">
+                <i class="fas fa-users"></i> Mening guruhlarim ({{ groups|length }})
+            </div>
+            <div class="tab" onclick="filterGroups('public')">
+                <i class="fas fa-globe"></i> Ochiq guruhlar ({{ public_groups|length }})
+            </div>
+        </div>
+
+        <!-- My Groups -->
+        <div id="myGroups" style="display: block;">
+            {% if groups %}
+                <div class="groups-grid">
+                    {% for group in groups %}
+                        <div class="group-card {% if group.owner_id == current_user.id %}owner{% endif %}" onclick="window.location.href='{{ url_for('groups.view_group', group_id=group.id) }}'">
+                            <div class="group-header">
+                                <div class="group-avatar">
+                                    {% if group.avatar %}
+                                        <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                                    {% else %}
+                                        <i class="fas fa-users"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="group-body">
+                                <div class="group-name">
+                                    {{ group.name }}
+                                    {% if group.owner_id == current_user.id %}
+                                        <span class="group-badge owner">Owner</span>
+                                    {% endif %}
+                                    {% if group.is_private %}
+                                        <span class="group-badge">Shaxsiy</span>
+                                    {% endif %}
+                                </div>
+                                <div class="group-description">
+                                    {{ group.description or 'Tavsif mavjud emas' }}
+                                </div>
+                                <div class="group-meta">
+                                    <div class="group-stats">
+                                        <span>
+                                            <i class="fas fa-user"></i> 
+                                            {{ group.get_member_count() }} a'zo
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-calendar"></i> 
+                                            {{ group.created_at.strftime('%d.%m.%Y') }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-hashtag"></i> ID: {{ group.id }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-users-slash"></i>
+                    <h3>Guruhlar mavjud emas</h3>
+                    <p>Siz hali hech qanday guruhga a'zo emassiz</p>
+                    <a href="{{ url_for('groups.create_group') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Guruh yaratish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Public Groups -->
+        <div id="publicGroups" style="display: none;">
+            {% if public_groups %}
+                <div class="groups-grid">
+                    {% for group in public_groups %}
+                        {% if not group.is_member(current_user) %}
+                            <div class="group-card" onclick="window.location.href='{{ url_for('groups.view_group', group_id=group.id) }}'">
+                                <div class="group-header">
+                                    <div class="group-avatar">
+                                        {% if group.avatar %}
+                                            <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                                        {% else %}
+                                            <i class="fas fa-users"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="group-body">
+                                    <div class="group-name">
+                                        {{ group.name }}
+                                    </div>
+                                    <div class="group-description">
+                                        {{ group.description or 'Tavsif mavjud emas' }}
+                                    </div>
+                                    <div class="group-meta">
+                                        <div class="group-stats">
+                                            <span>
+                                                <i class="fas fa-user"></i> 
+                                                {{ group.get_member_count() }} a'zo
+                                            </span>
+                                            <span>
+                                                <i class="fas fa-user-tie"></i> 
+                                                {{ group.owner.username }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-globe"></i>
+                    <h3>Ochiq guruhlar mavjud emas</h3>
+                    <p>Birinchi bo'lib ochiq guruh yarating</p>
+                    <a href="{{ url_for('groups.create_group') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Guruh yaratish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Filter groups
+        function filterGroups(type) {
+            const myGroups = document.getElementById('myGroups');
+            const publicGroups = document.getElementById('publicGroups');
+            const tabs = document.querySelectorAll('.tab');
+            
+            if (type === 'my') {
+                myGroups.style.display = 'block';
+                publicGroups.style.display = 'none';
+                tabs[0].classList.add('active');
+                tabs[1].classList.remove('active');
+            } else {
+                myGroups.style.display = 'none';
+                publicGroups.style.display = 'block';
+                tabs[0].classList.remove('active');
+                tabs[1].classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - Yangi parol</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Bir xil CSS kodlari (reset_request.html dagi style) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .bg-bubbles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            transition-timing-function: linear;
+            border-radius: 50%;
+        }
+
+        @keyframes square {
+            0% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(-1200px) rotate(600deg);
+                opacity: 0;
+            }
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease;
+            position: relative;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        .auth-header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-header i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .auth-header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .auth-body {
+            padding: 35px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .input-icon {
+            position: relative;
+        }
+
+        .input-icon i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: all 0.3s;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            background: #f9fafb;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4f46e5;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            height: 5px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0;
+            transition: all 0.3s;
+            border-radius: 3px;
+        }
+
+        .password-strength-text {
+            font-size: 0.8rem;
+            margin-top: 5px;
+            color: #6b7280;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
+
+        .auth-links {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        .auth-links a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-header">
+            <i class="fas fa-lock"></i>
+            <h1>Yangi parol</h1>
+            <p>Yangi parolingizni kiriting</p>
+        </div>
+        
+        <div class="auth-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas 
+                                {% if category == 'success' %}
+                                    fa-check-circle
+                                {% else %}
+                                    fa-exclamation-circle
+                                {% endif %}
+                            "></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" onsubmit="showLoading()">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Yangi parol
+                    </label>
+                    <div class="input-icon">
+                        {{ form.password(
+                            class="form-control", 
+                            placeholder="••••••••",
+                            id="password"
+                        ) }}
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="password-strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="password-strength-text" id="strengthText">
+                        Parol kuchini kiriting
+                    </div>
+                    
+                    {% if form.password.errors %}
+                        {% for error in form.password.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">
+                        <i class="fas fa-lock"></i> Parolni tasdiqlang
+                    </label>
+                    <div class="input-icon">
+                        {{ form.confirm_password(
+                            class="form-control", 
+                            placeholder="••••••••",
+                            id="confirm_password"
+                        ) }}
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div id="passwordMatch" style="font-size: 0.8rem; margin-top: 5px;"></div>
+                    {% if form.confirm_password.errors %}
+                        {% for error in form.confirm_password.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.submit(class="btn", value="Parolni yangilash") }}
+                </div>
+            </form>
+            
+            <div class="auth-links">
+                <a href="{{ url_for('auth.login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Tizimga kirish
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading').classList.add('active');
+        }
+
+        // Password strength checker
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            const strengthBar = document.getElementById('strengthBar');
+            const strengthText = document.getElementById('strengthText');
+            
+            // Calculate strength
+            let strength = 0;
+            
+            if (password.length >= 6) strength++;
+            if (password.match(/[a-z]+/)) strength++;
+            if (password.match(/[A-Z]+/)) strength++;
+            if (password.match(/[0-9]+/)) strength++;
+            if (password.match(/[$@#&!]+/))) strength++;
+            
+            const percentage = (strength / 5) * 100;
+            strengthBar.style.width = percentage + '%';
+            
+            if (strength <= 2) {
+                strengthBar.style.background = '#ef4444';
+                strengthText.textContent = 'Zaif parol';
+                strengthText.style.color = '#ef4444';
+            } else if (strength <= 3) {
+                strengthBar.style.background = '#f59e0b';
+                strengthText.textContent = 'O\'rtacha parol';
+                strengthText.style.color = '#f59e0b';
+            } else if (strength <= 4) {
+                strengthBar.style.background = '#3b82f6';
+                strengthText.textContent = 'Yaxshi parol';
+                strengthText.style.color = '#3b82f6';
+            } else {
+                strengthBar.style.background = '#10b981';
+                strengthText.textContent = 'Kuchli parol';
+                strengthText.style.color = '#10b981';
+            }
+        });
+
+        // Password match checker
+        document.getElementById('confirm_password').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            const matchDiv = document.getElementById('passwordMatch');
+            
+            if (confirmPassword.length > 0) {
+                if (password === confirmPassword) {
+                    matchDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i> Parollar mos keldi';
+                    matchDiv.style.color = '#10b981';
+                } else {
+                    matchDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #dc2626;"></i> Parollar mos kelmadi';
+                    matchDiv.style.color = '#dc2626';
+                }
+            } else {
+                matchDiv.innerHTML = '';
+            }
+        });
+
+        // Prevent form resubmission
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
+    </script>
+</body>
+</html>

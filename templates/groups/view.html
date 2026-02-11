@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat - {{ group.name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        .bg-bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .bg-bubbles li {
+            position: absolute;
+            list-style: none;
+            display: block;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.15);
+            bottom: -160px;
+            animation: square 25s infinite;
+            border-radius: 50%;
+        }
+
+        @keyframes square {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-1200px) rotate(600deg); opacity: 0; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 25px;
+        }
+
+        /* Main chat area */
+        .chat-area {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .group-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .group-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #4f46e5;
+            overflow: hidden;
+        }
+
+        .group-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .group-details h2 {
+            margin-bottom: 5px;
+        }
+
+        .group-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 70%;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .message-author {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .message-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 12px;
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+
+        .message-body {
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            border-top-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .message.own .message-body {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .message.own .message-author {
+            color: #4f46e5;
+        }
+
+        .message-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .expires-badge {
+            font-size: 0.7rem;
+            color: #f59e0b;
+            margin-left: 10px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        #messageInput:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .action-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #4f46e5;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: #e0e7ff;
+            transform: scale(1.1);
+        }
+
+        .send-btn {
+            background: linear-gradient(to right, #4f46e5, #7c3aed);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        .typing-indicator {
+            padding: 10px 20px;
+            font-style: italic;
+            color: #6b7280;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .member-list {
+            list-style: none;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+        }
+
+        .member-item:hover {
+            background: #f3f4f6;
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+
+        .member-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .member-info {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .member-role {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #e0e7ff;
+            color: #4f46e5;
+            display: inline-block;
+            margin-top: 2px;
+        }
+
+        .member-role.owner {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .member-role.admin {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        .offline-dot {
+            background: #9ca3af;
+        }
+
+        .invite-section {
+            background: #f9fafb;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .invite-link {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .invite-link input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: white;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <ul class="bg-bubbles">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
+
+    <div class="container">
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="group-info">
+                    <div class="group-avatar">
+                        {% if group.avatar %}
+                            <img src="{{ url_for('uploaded_file', filename=group.avatar) }}" alt="{{ group.name }}">
+                        {% else %}
+                            <i class="fas fa-users"></i>
+                        {% endif %}
+                    </div>
+                    <div class="group-details">
+                        <h2>{{ group.name }}</h2>
+                        <div class="group-meta">
+                            <span><i class="fas fa-user"></i> {{ group.get_member_count() }} a'zo</span>
+                            <span><i class="fas fa-clock"></i> 10 daqiqa</span>
+                            {% if group.is_private %}
+                                <span><i class="fas fa-lock"></i> Shaxsiy</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    {% if member.is_admin() %}
+                        <button class="btn-icon" onclick="window.location.href='{{ url_for('groups.edit_group', group_id=group.id) }}'" title="Guruhni tahrirlash">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    {% endif %}
+                    <button class="btn-icon" onclick="window.location.href='{{ url_for('groups.list_groups') }}'" title="Guruhlar">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                {% for message in messages %}
+                    <div class="message {% if message.user_id == current_user.id %}own{% endif %}" id="message-{{ message.id }}">
+                        <div class="message-avatar">
+                            <img src="{{ url_for('uploaded_file', filename=message.user.avatar) if message.user.avatar else 'https://ui-avatars.com/api/?name=' + message.user.username + '&background=4f46e5&color=fff' }}" alt="{{ message.user.username }}">
+                        </div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-author">{{ message.user.username }}</span>
+                                {% if message.user_id == group.owner_id %}
+                                    <span class="message-badge">Owner</span>
+                                {% endif %}
+                                <span class="message-time">{{ message.created_at.strftime('%H:%M') }}</span>
+                                <span class="expires-badge"><i class="fas fa-clock"></i> 10 min</span>
+                            </div>
+                            <div class="message-body">
+                                {% if message.content %}
+                                    <p>{{ message.content }}</p>
+                                {% endif %}
+                                {% if message.image_url %}
+                                    <img src="{{ url_for('uploaded_file', filename=message.image_url) }}" 
+                                         class="message-image" 
+                                         onclick="window.open(this.src)">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <span id="typingText"></span>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-group">
+                    <input type="text" 
+                           id="messageInput" 
+                           placeholder="Xabar yozing..." 
+                           autocomplete="off">
+                    
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <button class="action-btn" onclick="document.getElementById('imageInput').click()" title="Rasm yuklash">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    
+                    <button class="send-btn" id="sendButton">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Group description -->
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <span><i class="fas fa-info-circle"></i> Guruh haqida</span>
+                </div>
+                <p style="color: #6b7280; font-size: 0.95rem; line-height: 1.6;">
+                    {{ group.description or 'Tavsif mavjud emas' }}
+                </p>
+                <div style="margin-top: 15px; color: #6b7280; font-size: 0.85rem;">
+                    <i class="fas fa-calendar"></i> Yaratilgan: {{ group.created_at.strftime('%d.%m.%Y') }}
+                </div>
+            </div>
+
+            <!-- Members list -->
+            <div class="sidebar-section">
+                <div class="section-title">
+                    <span><i class="fas fa-users"></i> A'zolar ({{ members|length }})</span>
+                    {% if member.is_admin() %}
+                        <button class="action-btn" onclick="window.location.href='{{ url_for('groups.group_members', group_id=group.id) }}'" style="width: 35px; height: 35px;">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    {% endif %}
+                </div>
+                <ul class="member-list">
+                    {% for m in members %}
+                        <li class="member-item">
+                            <div class="member-avatar">
+                                <img src="{{ url_for('uploaded_file', filename=m.user.avatar) if m.user.avatar else 'https://ui-avatars.com/api/?name=' + m.user.username + '&background=4f46e5&color=fff' }}" alt="{{ m.user.username }}">
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">
+                                    <span class="online-dot {% if not m.user.is_online %}offline-dot{% endif %}"></span>
+                                    {{ m.user.username }}
+                                </div>
+                                <span class="member-role 
+                                    {% if m.role == 'owner' %}owner
+                                    {% elif m.role == 'admin' %}admin
+                                    {% endif %}">
+                                    {{ m.role }}
+                                </span>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Invite section (only for admins) -->
+            {% if member.is_admin() %}
+                <div class="invite-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">
+                            <i class="fas fa-link"></i> Taklif havolasi
+                        </span>
+                        <button class="action-btn" onclick="regenerateInvite()" title="Yangi kod yaratish" style="width: 35px; height: 35px;">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="invite-link">
+                        <input type="text" id="inviteLink" value="{{ url_for('groups.join_group', invite_code=group.invite_code, _external=True) }}" readonly>
+                        <button class="action-btn" onclick="copyInviteLink()" title="Nusxalash">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: #6b7280;">
+                        <i class="fas fa-info-circle"></i> Bu havola orqali istalgan foydalanuvchi guruhga qo'shilishi mumkin
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Leave group button (not for owner) -->
+            {% if not group.is_owner(current_user) %}
+                <form action="{{ url_for('groups.leave_group', group_id=group.id) }}" method="POST" 
+                      onsubmit="return confirm('Haqiqatan ham guruhni tark etmoqchimisiz?');">
+                    <button type="submit" class="btn-icon" style="width: 100%; margin-top: 20px; background: #fee2e2; color: #dc2626; border-radius: 10px;">
+                        <i class="fas fa-sign-out-alt"></i> Guruhni tark etish
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const currentUser = '{{ current_user.username }}';
+        const currentUserId = {{ current_user.id }};
+        const groupId = {{ group.id }};
+
+        // Socket events
+        socket.on('connect', function() {
+            socket.emit('join_group', { group_id: groupId });
+        });
+
+        socket.on('new_group_message', function(data) {
+            if (data.group_id === groupId) {
+                addMessage(data);
+            }
+        });
+
+        socket.on('user_typing', function(data) {
+            if (data.user_id !== currentUserId) {
+                document.getElementById('typingText').textContent = `${data.username} yozyapti...`;
+                document.getElementById('typingIndicator').style.display = 'block';
+                
+                setTimeout(() => {
+                    document.getElementById('typingIndicator').style.display = 'none';
+                }, 3000);
+            }
+        });
+
+        // Add message to chat
+        function addMessage(data) {
+            const chatMessages = document.getElementById('chatMessages');
+            const isOwn = data.user_id === currentUserId;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+            messageDiv.id = `message-${data.id}`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <img src="${data.user_avatar ? '/uploads/' + data.user_avatar : 'https://ui-avatars.com/api/?name=' + data.user + '&background=4f46e5&color=fff'}" alt="${data.user}">
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${data.user}</span>
+                        <span class="message-time">${new Date(data.created_at).toLocaleTimeString('uz-UZ', {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span class="expires-badge"><i class="fas fa-clock"></i> 10 min</span>
+                    </div>
+                    <div class="message-body">
+                        ${data.content ? `<p>${data.content}</p>` : ''}
+                        ${data.image_url ? `<img src="/uploads/${data.image_url}" class="message-image" onclick="window.open(this.src)">` : ''}
+                    </div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content) return;
+            
+            const formData = new FormData();
+            formData.append('content', content);
+            
+            try {
+                const response = await fetch(`/api/groups/${groupId}/messages`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    input.value = '';
+                }
+            } catch (error) {
+                console.error('Xabar yuborishda xatolik:', error);
+            }
+        }
+
+        // Send image
+        document.getElementById('imageInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                const response = await fetch(`/api/groups/${groupId}/messages`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    this.value = '';
+                }
+            } catch (error) {
+                console.error('Rasm yuborishda xatolik:', error);
+            }
+        });
+
+        // Typing indicator
+        document.getElementById('messageInput').addEventListener('input', function() {
+            socket.emit('typing_group', {
+                group_id: groupId,
+                is_typing: this.value.length > 0
+            });
+        });
+
+        // Enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Send button
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Copy invite link
+        function copyInviteLink() {
+            const input = document.getElementById('inviteLink');
+            input.select();
+            document.execCommand('copy');
+            
+            alert('Taklif havolasi nusxalandi!');
+        }
+
+        // Regenerate invite code
+        function regenerateInvite() {
+            if (confirm('Yangi taklif kodi yaratilsinmi? Eski kod o\'z kuchini yo\'qotadi.')) {
+                fetch(`/groups/${groupId}/regenerate-invite`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('inviteLink').value = data.invite_url;
+                    }
+                });
+            }
+        }
+
+        // Initial scroll to bottom
+        scrollToBottom();
+    </script>
+</body>
+</html>

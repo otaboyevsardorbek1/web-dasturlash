@@ -21,9 +21,10 @@ class User(UserMixin, db.Model):
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
-    owned_groups = db.relationship('Group', backref='owner', lazy=True)
-    messages = db.relationship('Message', backref='user', lazy=True)
+    # Relationships - aniq nomlar bilan
+    owned_groups = db.relationship('Group', back_populates='owner', lazy=True)
+    group_memberships = db.relationship('GroupMember', back_populates='user', lazy=True)
+    messages = db.relationship('Message', back_populates='user', lazy=True)
     
     @property
     def password(self):
@@ -59,9 +60,10 @@ class Group(db.Model):
     is_private = db.Column(db.Boolean, default=False)
     invite_code = db.Column(db.String(50), unique=True, default=lambda: secrets.token_urlsafe(16))
     
-    # Relationships
-    members = db.relationship('GroupMember', backref='group', lazy=True, cascade='all, delete-orphan')
-    messages = db.relationship('Message', backref='group', lazy=True, cascade='all, delete-orphan')
+    # Relationships - aniq nomlar bilan
+    owner = db.relationship('User', back_populates='owned_groups', foreign_keys=[owner_id])
+    members = db.relationship('GroupMember', back_populates='group', lazy=True, cascade='all, delete-orphan')
+    messages = db.relationship('Message', back_populates='group', lazy=True, cascade='all, delete-orphan')
     
     def is_owner(self, user):
         return self.owner_id == user.id
@@ -89,7 +91,10 @@ class GroupMember(db.Model):
     role = db.Column(db.String(20), default='member')  # owner, admin, member
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Unique constraint
+    # Relationships - MUHIM: back_populates bilan to'g'ri bog'lash
+    group = db.relationship('Group', back_populates='members')
+    user = db.relationship('User', back_populates='group_memberships')
+    
     __table_args__ = (db.UniqueConstraint('group_id', 'user_id', name='unique_group_member'),)
     
     def is_admin(self):
@@ -112,13 +117,14 @@ class Message(db.Model):
     image_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(seconds=600))
-    
-    # Auto-delete flag
     is_deleted = db.Column(db.Boolean, default=False)
+    
+    # Relationships
+    user = db.relationship('User', back_populates='messages')
+    group = db.relationship('Group', back_populates='messages')
     
     @classmethod
     def cleanup_expired(cls):
-        """10 daqiqadan oshgan xabarlarni o'chirish"""
         expired = cls.query.filter(
             cls.expires_at <= datetime.utcnow(),
             cls.is_deleted == False
@@ -126,13 +132,10 @@ class Message(db.Model):
         
         for message in expired:
             message.is_deleted = True
-            db.session.delete(message)  # To'liq o'chirish
+            db.session.delete(message)
         
         db.session.commit()
         return len(expired)
-    
-    def __repr__(self):
-        return f'<Message {self.id}>'
 
 # Password Reset Token model
 class PasswordResetToken(db.Model):
@@ -144,6 +147,8 @@ class PasswordResetToken(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(hours=1))
     is_used = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User')
     
     @classmethod
     def cleanup_expired(cls):
@@ -161,3 +166,5 @@ class ActivityLog(db.Model):
     details = db.Column(db.Text, nullable=True)
     ip_address = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User')

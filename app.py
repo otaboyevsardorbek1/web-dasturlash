@@ -181,4 +181,4 @@ if __name__ == '__main__':
     # Start cleanup job
     socketio.start_background_task(handle_cleanup)
     
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)

@@ -2,5 +2,16 @@ Flask
 Flask-SocketIO
 python-socketio
 eventlet==0.33.3
-
-"
+Flask-SQLAlchemy
+Flask-Login
+Flask-WTF
+WTForms
+Werkzeug
+python-dotenv
+Flask-Mail
+itsdangerous
+email-validator
+Pillow==10.0.0  # Rasm yuklash uchun
+bcrypt==4.0.1   # Parol hash uchun
+Flask-Migrate==4.0.4  # Database migration
+redis==5.0.0    # 10 daqiqalik cache uchun

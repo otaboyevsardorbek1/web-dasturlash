@@ -42,8 +42,7 @@ app.register_blueprint(messages_bp, url_prefix='/api')
 
 @login_manager.user_loader
 def load_user(user_id):
-    
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Main route
 @app.route('/')
@@ -182,4 +181,4 @@ if __name__ == '__main__':
     # Start cleanup job
     socketio.start_background_task(handle_cleanup)
     
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000,debug=True)

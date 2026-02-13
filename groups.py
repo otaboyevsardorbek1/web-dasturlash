@@ -273,7 +273,7 @@ def remove_member(group_id, user_id):
     
     # Can't remove owner
     if target_member.role == 'owner':
-        return jsonify({'error': 'Guruh egasini chiqarib bo\'lmaydi'}), 400
+        return jsonify({'error': 'Guruh egasini chiqarib bolmaydi'}), 400
     
     db.session.delete(target_member)
     db.session.commit()

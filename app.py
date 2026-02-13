@@ -42,6 +42,7 @@ app.register_blueprint(messages_bp, url_prefix='/api')
 
 @login_manager.user_loader
 def load_user(user_id):
+    
     return User.query.get(int(user_id))
 
 # Main route
